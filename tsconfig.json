@@ -6,7 +6,7 @@
         "sourceMap": true,
         "outDir": "dist",
         "resolveJsonModule": true,
-        "esModuleInterop": true,
+        "esModuleInterop": true
     },
-    "include": ["src/**/*"]
+    "include": ["src/**/*", "index.js"]
 }
