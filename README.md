@@ -2,7 +2,7 @@
 
 ## About
 
--   This npm package helps you to make madlibs games in discord easier.
+This npm package helps you to make madlibs games in discord easier.
 
 ## How to Use
 
@@ -16,18 +16,73 @@ npm i discord-madlibs@latest
 
 ### Basic code structure
 
-`index.js`
+`JavaScript (CommonJS)`
 
 ```js
-import { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, Permissions, MessageManager, Embed, Collection } = from "discord.js"; // assuming you already have discord.js installed.
+/* assuming you already have discord.js installed. */
+const { Client, GatewayIntentBits } = require("discord.js");
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+    ],
+});
 
-client.on("messageCreate", async msg => {
-    const tokens = msg.split(/ +/g);
-    if (tokens[0] === ".madlibs") {
-        const args = tokens.shift();
-        /* the rest will be filled out after the package is fully released */
+client.on("ready", async () => {
+    console.log("Ready!");
+    await client.application.commands.create({
+        name: "madlibs",
+        description: "Play Madlibs!",
+    });
+});
+
+client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isCommand()) return;
+
+    if (interaction.commandName === "madlibs") {
+        import("discord-madlibs").then(async (game) => {
+            await interaction.reply("Starting madlibs...");
+            await game.default(interaction);
+            /* The game will send all the replies itself. */
+        });
+    } else {
+    }
+});
+
+client.login("YOUR TOKEN HERE");
+```
+
+`JavaScript (ESModules)`
+
+```js
+import { Client, GatewayIntentBits } from "discord.js";
+import game from "discord-madlibs";
+
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+    ],
+});
+
+client.on("ready", async () => {
+    console.log("Ready!");
+    await client.application.commands.create({
+        name: "madlibs",
+        description: "Play Madlibs!",
+    });
+});
+
+client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isCommand()) return;
+
+    if (interaction.commandName === "madlibs") {
+        await interaction.reply("Starting madlibs...");
+        game(interaction);
+    } else {
     }
 });
 

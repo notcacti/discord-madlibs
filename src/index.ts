@@ -5,6 +5,7 @@ import {
     Client,
     ChannelType,
     Message,
+    Channel,
 } from "discord.js";
 
 const sleep = (ms: number = 2000) =>
@@ -18,29 +19,33 @@ type APIResponse = {
 
 async function collectMessage(
     client: Client,
-    channelID: string,
+    channel: Channel,
     userID: string
-) {
-    const channel = client.channels.cache.get(channelID);
-
+): Promise<string | undefined> {
     if (channel.type !== ChannelType.GuildText)
         throw new Error("Madlibs can only be played in a Text Channel.");
 
-    const collectorFilter = (m) => m.author.id === userID;
-    const collector = channel.createMessageCollector({
-        time: 30000,
-        max: 1,
-        filter: collectorFilter,
+    return new Promise((resolve, reject) => {
+        const collectorFilter = (m) => m.author.id === userID;
+
+        const collector = channel.createMessageCollector({
+            max: 1,
+            time: 60000,
+            filter: collectorFilter,
+        });
+
+        collector.on("collect", async (m) => {
+            const msg = m.content;
+            collector.stop();
+            resolve(msg);
+        });
+
+        collector.on("end", (collected, reason) => {
+            if (reason === "time") {
+                resolve(undefined); // Resolve with undefined on timeout
+            }
+        });
     });
-
-    let message: Message<boolean>;
-
-    collector.on("end", async (collection) => {
-        message = collection.at(0);
-        return;
-    });
-
-    return message;
 }
 
 async function getAnswer(
@@ -48,16 +53,19 @@ async function getAnswer(
     pos: string
 ): Promise<string> {
     await interaction.channel.send(`Enter a ${pos}:`);
+
     let answer = await collectMessage(
         interaction.client,
-        interaction.channel.id,
+        interaction.channel,
         interaction.user.id
     );
-    if (!answer) {
+
+    if (!answer || answer.length <= 0) {
         await interaction.channel.send(`Please Enter an Answer.`);
         await getAnswer(interaction, pos);
+    } else {
+        return answer;
     }
-    return answer.content;
 }
 
 async function play(interaction: CommandInteraction) {
@@ -78,22 +86,23 @@ async function play(interaction: CommandInteraction) {
 
     let data: APIResponse = response.data;
 
-    const answers: string[] = [];
+    let answers: string[] = [];
 
-    data.blanks.forEach(async (blank) => {
+    for (const blank of data.blanks) {
         let answer = await getAnswer(interaction, blank);
         answers.push(answer);
-    });
+    }
 
-    await interaction.channel.send("Completed all the blanks!");
+    await interaction.channel.send(
+        "Completed all the blanks! Story coming up!"
+    );
     await sleep();
 
-    let i;
     let l = Math.min(data.text.length, answers.length);
 
     const story: string[] = [];
 
-    for (i = 0; i < l; i++) {
+    for (let i = 0; i < l; i++) {
         story.push(data.text[i], answers[i]);
     }
     story.push(...data.text.slice(l), ...answers.slice(l));
